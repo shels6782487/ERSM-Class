@@ -1,0 +1,98 @@
+---
+editor: visual
+title: "Project Proposal: Financial Data Analysis of a Building Service
+  Company"
+toc-title: Table of contents
+---
+
+**Project Proposal: Financial Data Analysis of a Building Service Company**
+
+My project is to analyze financial data...
+
+--- Shelley Wright\
+ESRM 6990V
+
+**Additional Notes:** This is a second bold line if needed.
+
+My project is to analyze financial data...
+
+--- Shelley Wright\
+ESRM 6990V
+
+**Project Proposal: Financial Data Analysis of a Building Services Company**
+
+**Introduction**
+
+This project aims to analyze the financial data of a building services company where I have been employed for 25 years. The primary research question is: **What predictor variables influence net income?** Identifying these key factors will provide insights into financial trends and potential areas for optimization.
+
+**Data Collection and Preparation**
+
+Financial datasets from **2019 to 2023** will be extracted from QuickBooks and imported into Excel. The following steps will be taken to ensure data integrity and confidentiality:
+
+-   **Data Cleaning & Transformation**:
+    -   The datasets will be transposed and merged into a single, structured dataset for analysis.
+    -   In compliance with the business owner's confidentiality request, account names and the company name will be anonymized.
+    -   Accounts will be categorized into four main sectors: **Commercial, Industrial, University, and Medical.**
+
+**Data Analysis Approach**
+
+To determine the factors influencing net income, the analysis will include:
+
+1.  **Regression Analysis**: A full regression model will be used to identify significant predictor variables.
+2.  **Descriptive Statistics**: Summary statistics will be provided to highlight key financial trends, including:
+    -   The number of accounts per sector
+    -   Distribution of revenue across different sectors
+    -   The most influential variables affecting net income
+3.  **Visualization**: Graphs and charts will be used to effectively present findings from both the descriptive statistics and regression model.
+
+**Project Timeline**
+
+| **Phase**                         | **Date Range**     | **Tasks**                                                     |
+|:----------------------------------|:-------------------|:--------------------------------------------------------------|
+| **Proposal Submission**           | March 31 - April 4 | Submit project proposal for approval                          |
+| **Data Preparation & Cleaning**   | April 7 - 11       | Extract, clean, and categorize datasets                       |
+| **Data Analysis & Visualization** | April 7 - 11       | Conduct regression analysis and create visual representations |
+| **Report Writing**                | April 11 - 17      | Write and finalize the project report                         |
+| **Presentation Preparation**      | April 17 - 22      | Develop and finalize the project presentation                 |
+
+**Expected Outcomes**
+
+By the end of this project, I expect to:
+
+-   Identify key predictors of net income in the company's financial data.
+-   Provide clear visual insights into financial trends and sector performance.
+-   Deliver actionable findings that could help improve financial decision-making.
+
+------------------------------------------------------------------------
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+::: cell
+``` {.r .cell-code}
+1 + 1
+```
+
+::: {.cell-output .cell-output-stdout}
+```         
+[1] 2
+```
+:::
+:::
+
+You can add options to executable code like this
+
+::: cell
+::: {.cell-output .cell-output-stdout}
+```         
+[1] 4
+```
+:::
+:::
+
+The `echo: false` option disables the printing of code (only output is displayed).
