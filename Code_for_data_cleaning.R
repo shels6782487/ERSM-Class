@@ -1,25 +1,36 @@
-###Data Cleaning for Project###
-### Manually coded classes for indivisual accounts for all years ###
-View("2019P_L")
+##Manually coded class due to the columns being indivisual account names###
 
 
-### Transpose 2019 Dataset##
-transposed_data2019 <- t(2019P_L)
+
+
+### Transpose 2019 Dataset and add year column ##
+transposed_data2019 <- t(P_L_2019)
 P_L2019t <- as.data.frame(transposed_data2019)
-
-### Need to create a year column for every row ###
 P_L2019t$year <- 2019
 
-### Transpose 2020 Dataset##
-transposed_data2020 <- t(2020P_L)
+### Transpose 2020 Dataset and add year column ##
+transposed_data2020 <- t(P_L_2020)
 P_L2020t <- as.data.frame(transposed_data2020)
-
-### Need to create a year column for every row ###
 P_L2020t$year <- 2020
 
-### Transpose 2021 Dataset##
-transposed_data2021 <- t(2021P_L)
-P_L2019t <- as.data.frame(transposed_data2019)
+### Transpose 2021 Dataset and add year column ##
+transposed_data2021 <- t(P_L_2021)
+P_L2021t <- as.data.frame(transposed_data2021)
+P_L2021t$year <- 2021
 
-### Need to create a year column for every row ###
-P_L2019t$year <- 2019
+### Transpose 2022 Dataset and add year column ##
+transposed_data2022 <- t(P_L_2022)
+P_L2022t <- as.data.frame(transposed_data2022)
+P_L2022t$year <- 2022
+
+### Transpose 2023 Dataset and add year column ##
+transposed_data2023 <- t(P_L_2023)
+P_L2023t <- as.data.frame(transposed_data2023)
+P_L2023t$year <- 2023
+
+###Merge all datasets together####
+# Combine all years into one dataset
+PandL <- rbind(P_L2019t, P_L2020t, P_L2021t, P_L2022t, P_L2023t)
+
+#### visually look at merged dataset###
+View(PandL)
