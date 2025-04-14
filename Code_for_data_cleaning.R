@@ -1,4 +1,4 @@
-##Manually coded class due to the columns being indivisual account names###
+##Manually coded class due to the columns being seperate account names###
 
 
 
