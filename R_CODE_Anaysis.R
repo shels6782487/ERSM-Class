@@ -1,9 +1,10 @@
 ###### Analysis Coding #####
 # Ensure 'Year' is treated as a categorical variable and Class_Label###
 PandL$Year <- as.factor(PandL$Year)
-PandL$Class_Label <- as.factor((PandL$Class_Label))
+
+
 # Fit the multiple linear regression model without interaction terms
-model <- lm(Net.Income ~ Year  + Class_Label + Payroll.Expenses + Paper.Goods + Cleaning.Supplies, data = PandL)
+model <- lm(Net.Income ~ Year  + Class + Payroll.Expenses + Paper.Goods + Cleaning.Supplies, data = PandL)
 
 # View the summary of the model
 summary(model)
@@ -12,16 +13,15 @@ summary(model)
 plot(model)
 
 # Model with log transformation of Net Income to correct issues
-model2 <- lm(log(Net.Income) ~ Year + Class_Label + Payroll.Expenses + 
-               Paper.Goods + Cleaning.Supplies, data = PandL)
+
 
 plot(model2)
 
 ### decided to try Robust Regression ###
 library(MASS)
 
-robust_model <- rlm(log(Net.Income) ~ Year + Class_Label + Payroll.Expenses + 
-                      Paper.Goods + Cleaning.Supplies, data = PandL_filtered)
+robust_model <- rlm(log(Net.Income) ~ Year + Class + Payroll.Expenses + 
+                      Paper.Goods + Cleaning.Supplies, data = PandL)
 
 summary(robust_model)
 
