@@ -8,25 +8,28 @@ library(scales)
 library(plotly)
 # Set background color
 par(bg = "lightblue")
-# Remove rows with missing Class_Label just in case
-PandL_clean <- PandL %>% filter(!is.na(Class_Label))
 
-# Create class_counts table
-class_counts <- table(PandL_clean$Class_Label)
+library(plotrix)
 
+# Create the class counts table
+class_counts <- table(PandL$Class)
 
-# Create the exploding 3D pie chart for Different Classes###
+# Define custom labels
+labels <- c("Commercial", "Industrial", "University", "Medical")
+
+# Create labels WITH counts included
+labels_with_counts <- paste0(labels, "\n(", class_counts, ")")
+
+# Create the exploding 3D pie chart
 pie3D(
   class_counts,
-  labels = labels,
-  explode = 0.1,
-  height = 0.2,         # Taller slices
-  
-  main = "Number of Different Account from 2019-2023",
+  labels = labels_with_counts,
+  explode = 0.3,
+  height = 0.2,
+  main = "Number of Different Accounts from 2019–2023",
   labelcex = 1.1,
   col = rainbow(length(class_counts))
 )
-
 #### Bar plot for Number of Accounts per Year###
 
 #### Need to Summarize to get counts First###
@@ -121,6 +124,7 @@ expense_long <- PandL %>%
     names_to = "Expense_Type",
     values_to = "Amount"
   )
+
 
 # ###### Y-axis padding
 max_expense <- max(expense_long$Amount, na.rm = TRUE)

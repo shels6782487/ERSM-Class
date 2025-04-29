@@ -20,7 +20,7 @@ plot(model2)
 ### decided to try Robust Regression ###
 library(MASS)
 
-robust_model <- rlm(log(Net.Income) ~ Year + Class_Label + Payroll.Expenses + 
+robust_model <- rlm(log(Net.Income) ~ Year + Class + Payroll.Expenses + 
                       Paper.Goods + Cleaning.Supplies, data = PandL_filtered)
 
 summary(robust_model)

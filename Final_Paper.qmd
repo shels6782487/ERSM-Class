@@ -1,0 +1,619 @@
+---
+---
+title: "Analyzing Financial Data to Predict Net Income of a Building Services Company (2019–2023)"
+author: "Shelley Wright"
+date: "2025-04-26"
+format:
+  html:
+    self-contained: true
+    toc: true
+    warning: false
+    number-sections: true
+    code-fold: true
+    code-tools: true   
+execute:
+  echo: true          
+---
+
+```         
+```
+
+# Introduction
+
+Predicting net income accurately is vital for operational planning and strategic decision-making in business industries. Reliable forecasts enable organizations to allocate resources effectively, plan for growth, and mitigate potential financial risks. This study analyzes detailed financial data collected from a building services company spanning the years 2019 to 2023, with the primary goal of modeling and predicting net income based on a variety of operational factors. Key predictor variables examined include service class, fiscal year, expenditures on cleaning supplies, purchases of paper goods, and payroll expenses.
+
+To identify the most suitable predictive framework, multiple linear regression models were constructed and compared, assessing model performance based on fit statistics and diagnostic measures. During the course of the analysis, log transformations were applied to correct for skewed distributions and improve linearity, while robust regression techniques were employed to better handle the presence of outliers and heteroscedasticity that could otherwise distort model estimates. These methodological adjustments led to improved model performance; however, residual diagnostics suggested that additional refinements could further enhance predictive accuracy. Overall, this study highlights both the challenges and opportunities involved in financial modeling for service-based industries and lays the groundwork for future enhancements using more complex modeling approaches or expanded datasets.
+
+# Setup
+
+```{r setup, include=FALSE}
+# Load libraries
+library(plotrix)
+library(ggplot2)
+library(dplyr)
+library(gt)
+library(tidyr)
+library(scales)
+library(plotly)
+
+# Now load the real dataset (not faking anymore)
+PandL <- read.csv("PandL.csv")
+#| label: tbl-expense-long
+#| echo: true
+#| code-fold: true
+
+# Create summarized expense_long dataset
+expense_long <- PandL %>%
+  group_by(Year) %>%
+  summarise(
+    Cleaning = sum(Cleaning.Supplies, na.rm = TRUE),
+    Paper = sum(Paper.Goods, na.rm = TRUE),
+    Payroll = sum(Payroll.Expenses, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = c(Cleaning, Paper, Payroll),
+    names_to = "Expense_Type",
+    values_to = "Amount"
+  )
+
+```
+
+# Data Cleaning and Preparation
+
+The dataset underwent extensive cleaning procedures to ensure accuracy, consistency, and readiness for statistical analysis. Initial steps involved correcting data inconsistencies, standardizing formats, and addressing missing values to maintain the integrity of the analysis. Financial data was systematically exported into Excel files, organized separately by year to facilitate easier handling and year-over-year comparisons. Each exported file contained comprehensive financial records for all accounts managed by the company during that period.
+
+To streamline the analysis and maintain confidentiality, account names were removed and each account was categorized into one of four broad classes: commercial, industrial, medical, or university-affiliated. This classification allowed for clearer segmentation of financial patterns across different types of service clients. A categorical variable representing the year was then added to each dataset to preserve the time dimension essential for longitudinal analysis. Given the original format of the exported files, each dataset required transposition so that financial measures were properly aligned with their corresponding accounts and years.
+
+Following these transformations, the individual yearly datasets were carefully merged into a single, unified dataset to serve as the foundation for the predictive modeling process. This merging process was performed with close attention to maintaining consistency across variables and ensuring that no financial records were inadvertently lost or duplicated. The resulting dataset provided a clean, structured, and comprehensive resource suitable for in-depth regression modeling and further statistical exploration.
+
+# Demographics
+
+To gain a deeper understanding of the underlying characteristics within the dataset, demographic summaries were created based on key financial and operational variables. In this context, "demographics" refers to the classification of accounts according to factors such as service class (commercial, industrial, medical, or university-affiliated) and fiscal year of service. These groupings allowed for the identification of patterns and differences across various types of accounts, providing essential context for interpreting financial trends over time. By summarizing the distribution of accounts across classes and years, it became possible to observe which sectors contributed most significantly to net income and how these contributions shifted annually. These demographic breakdowns were critical in informing the selection and construction of the regression models, ensuring that the models captured not just overall financial performance, but also the unique contributions of different account types and operational years to the company's financial outcomes.
+
+The pie chart titled "Number of Different Accounts from 2019--2023" provides a visual summary of the distribution of account types within the company's financial data. It reveals that commercial accounts make up the majority of the company's business, representing 279 accounts, followed by industrial (81 accounts), medical (62 accounts), and university-affiliated accounts (44 accounts). This breakdown highlights the company's heavy reliance on the commercial sector for its financial stability. Understanding the relative proportions of account types is important because it informs the regression modeling process --- specifically, it ensures that variations in net income are interpreted within the context of the underlying client demographics. Differences in service class may drive variability in financial performance, making this demographic breakdown a critical component of the overall analysis.
+
+```{r}
+# Load the necessary library
+library(plotrix)
+# Set the background color to light blue
+par(bg = "lightblue")
+# Create the class counts table
+class_counts <- table(PandL$Class)
+
+# Define custom labels
+labels <- c("Commercial", "Industrial", "Medical", "University")
+
+# Create labels with counts included
+labels_with_counts <- paste0(labels, "\n(", class_counts, ")")
+
+# Create the exploding 3D pie chart
+pie3D(
+  class_counts,
+  labels = labels_with_counts,
+  explode = 0.3,
+  height = 0.2,
+  main = "Number of Different Accounts from 2019–2023",
+  labelcex = 1.1,
+  col = rainbow(length(class_counts))
+)
+
+```
+
+The bar graph titled "Number of Accounts by Year" displays the distribution of accounts from 2019 to 2023. Each bar represents the total number of accounts recorded in a given year, with the exact count labeled above each bar for clarity. The number of accounts remained relatively consistent over the five-year period, ranging from 90 accounts in 2019 to 98 accounts in 2020, which marked the peak. Subsequent years showed minimal variation, with 91 accounts in 2021, 94 in 2022, and 93 in 2023.
+
+This stability in account numbers across years is important for the modeling process, as it suggests that there were no major fluctuations in client volume that could introduce bias or disproportionately influence the regression analysis. Consistent sample sizes across years support more reliable year-to-year comparisons and help ensure that any trends detected in net income are more likely attributable to operational or financial variables rather than shifts in the size of the client base.
+
+```{r}
+#| label: fig-accounts-per-year
+#| fig-cap: "Number of Accounts by Year (2019–2023)"
+#| echo: true
+#| code-fold: true   # <-- collapsible
+
+
+# Summarize to get counts
+accounts_per_year <- PandL %>%
+  group_by(Year) %>%
+  summarise(account_count = n()) %>%
+  arrange(Year)
+
+# Create the bar plot
+ggplot(accounts_per_year, aes(x = factor(Year), y = account_count)) +
+  geom_col(fill = "steelblue", color = "black", width = 0.7) +
+  geom_text(aes(label = account_count), vjust = -0.5, size = 5, fontface = "bold") +
+  labs(
+    title = "Number of Accounts by Year",
+    x = "Year",
+    y = "Number of Accounts"
+  ) +
+  ylim(0, 110) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.text.x = element_text(angle = 0, vjust = 0.5),
+    panel.grid.major.y = element_line(color = "gray80"),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "lightyellow", color = NA),
+    panel.background = element_rect(fill = "lightyellow", color = NA)
+  )
+```
+
+The line graph titled "Total Net Income by Year" illustrates the overall net income generated by the company from 2019 to 2023. Net income values are plotted for each year, with specific dollar amounts labeled at each point and a dollar sign symbol marking each year's income. The y-axis represents Net Income (\$), while the x-axis displays the years in chronological order.
+
+The graph shows a clear upward trend from 2019 to 2020, where net income increased significantly from \$921,215 to a peak of \$1,326,715. After reaching this peak in 2020, net income steadily declined over the following years, dropping to \$1,169,509 in 2021, \$1,052,897 in 2022, and \$1,052,813 in 2023. While the rate of decline slowed between 2022 and 2023, the overall trend after 2020 indicates a decrease in profitability.
+
+In the context of this project, this trend is crucial for understanding financial dynamics over time and emphasizes the need for predictive modeling. The sharp increase in 2020 followed by a gradual decline suggests that specific operational factors---such as changes in payroll expenses, supply costs, or shifts in account types---may have impacted net income. By incorporating variables like year, class, payroll expenses, cleaning supplies, and paper goods into regression models, the analysis aims to identify which factors most strongly influenced these income patterns. This understanding will not only enhance prediction accuracy but also provide insights for future financial planning and decision-making within the company.
+
+```{r}
+#| label: fig-net-income-by-year
+#| fig-cap: "Total Net Income by Year (2019–2023)"
+#| echo: true
+#| code-fold: true
+#| warning: false 
+####Line graph for net income by year #####
+#  Summarize Net Income by Year
+net_income_by_year <- PandL %>%
+    group_by(Year) %>%
+    summarise(Net_Income = sum(Net.Income, na.rm = TRUE)) %>%
+    arrange(Year)
+
+#  Calculate max y for padding
+max_income <- max(net_income_by_year$Net_Income, na.rm = TRUE)
+y_limit <- max_income * 1.25  # Add 25% padding
+
+#  Fancy Line Chart with Dollar Signs as Points
+ggplot(net_income_by_year, aes(x = Year, y = Net_Income)) +
+    geom_line(color = "steelblue", linewidth = 1.5) +
+    
+    # Dollar sign symbols as data points
+    geom_text(
+        aes(label = "$"),
+        size = 8,         # Adjust size as needed
+        vjust = 0.5,
+        color = "darkgreen",
+        fontface = "bold"
+    ) +
+    
+    # Actual Net Income values above each point
+    geom_text(
+        aes(label = comma(round(Net_Income))),
+        vjust = -2.5,
+        size = 3.5,
+        fontface = "bold"
+    ) +
+    
+    labs(
+        title = "Total Net Income by Year",
+        x = "Year",
+        y = "Net Income ($)"
+    ) +
+    scale_y_continuous(
+        labels = dollar_format(),
+        limits = c(500000, y_limit)
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        panel.background = element_rect(fill = "lightblue", color = NA),
+        plot.background = element_rect(fill = "lightgrey", color = NA)
+    )
+```
+
+The figure below shows the trend in Cleaning, Paper, and Payroll expenses from 2019 to 2023. Payroll expenses were consistently the highest, increasing steadily over the period. Cleaning expenses peaked in 2020 before declining and stabilizing, while Paper expenses remained relatively low and stable throughout the study period. Payroll expenses were consistently the highest, increasing steadily over the period. Cleaning expenses peaked in 2020 before declining and stabilizing, while Paper expenses remained relatively low and stable throughout the analysis.
+
+```{r}
+
+
+#| label: fig-expenses-over-time
+#| fig-cap: "Expenses by Category Over Time (2019–2023)"
+#| echo: true
+#| code-fold: true
+
+ggplot(expense_long, aes(x = Year, y = Amount, color = Expense_Type)) +
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_text(
+    aes(label = comma(round(Amount))),
+    vjust = -0.7,
+    size = 2.5,
+    fontface = "bold",
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(
+    labels = dollar_format(),
+    breaks = seq(0, 1600000, by = 250000)
+  ) +
+  labs(
+    title = "Expenses by Category Over Time",
+    x = "Year",
+    y = "Total Expense ($)",
+    color = "Expense Type"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "top",
+    panel.background = element_rect(fill = "lightyellow", color = NA),
+    plot.background = element_rect(fill = "lightyellow", color = NA),
+    plot.margin = margin(5,5,5,5)  # more compact
+  )
+
+```
+
+The final demographic illustration of demographics is a 3D scatter plot titled "Predicted Net Income by Payroll and Year" illustrates the relationship between payroll expenses, year, and net income for the building services company from 2019 to 2023. Payroll expenses are plotted on the x-axis, years are ordered along the y-axis, and net income is represented on the z-axis. Each point reflects an account in a given year, with colors distinguishing between years and lines connecting observations within the same year. The plot shows a generally positive relationship between payroll expenses and net income, although the trend is not perfectly consistent across years. Net income peaked in 2020, followed by a gradual flattening in subsequent years despite continued increases in payroll expenses. This visualization highlights the importance of including both payroll and year in the predictive models and suggests the need for a flexible modeling approach to account for variability over time.
+
+```{r}
+#| label: Predicted Net Income by Payroll and Year
+#| fig-cap: "Predicted Net Income by Payroll and Year"
+#| echo: true
+#| code-fold: true
+
+##### 3D Plot of Net Income by Year by Payroll ####
+library(plotly)
+
+PandL$Year <- as.factor(PandL$Year)
+PandL$YearNum <- as.numeric(as.character(PandL$Year))  # Needed for axis ordering
+
+plot_ly(
+  PandL, 
+  x = ~Payroll.Expenses,        
+  y = ~YearNum,                 
+  z = ~Net.Income, 
+  color = ~Year,
+  colors = c("cyan", "orange", "pink", "yellow", "purple"),
+  type = "scatter3d", 
+  mode = "lines+markers",
+  marker = list(
+    size = 8,
+    line = list(color = 'black', width = 2)
+  ),
+  line = list(width = 5),
+  width = 900,
+  height = 600
+) %>%
+  layout(
+    margin = list(l = 60, r = 60, b = 50, t = 50),   # Tighter top margin
+    scene = list(
+      camera = list(eye = list(x = 1.6, y = -1.6, z = 1.2)),  # Nicely centered view
+      xaxis = list(
+        title = list(text = "Payroll Expenses", font = list(size = 14)),
+        tickfont = list(size = 11),
+        gridcolor = 'grey50',         # Darker grid lines
+        zerolinecolor = 'grey50'       # Darker zero line
+      ),
+      yaxis = list(
+        title = list(text = "Year", font = list(size = 14)),
+        tickvals = c(2019, 2020, 2021, 2022, 2023),
+        ticktext = c("2019", "2020", "2021", "2022", "2023"),
+        tickfont = list(size = 11),
+        gridcolor = 'grey50',          # Darker grid lines
+        zerolinecolor = 'grey50'
+      ),
+      zaxis = list(
+        title = list(text = "Net Income", font = list(size = 14)),
+        tickfont = list(size = 11),
+        gridcolor = 'grey50',          # Darker grid lines
+        zerolinecolor = 'grey50'
+      )
+    ),
+    title = list(
+      text = "Predicted Net Income by Payroll and Year",
+      font = list(size = 22),
+      x = 0.5,
+      xanchor = "center",
+      yanchor = "top"
+    ),
+    plot_bgcolor = '#e6f7ff',   # Light blue inside plot
+    paper_bgcolor = '#e6f7ff'   # Light blue outside plot
+  )
+
+
+```
+
+# Methods
+
+## Initial Regression Model
+
+A multiple linear regression was performed to predict net income based on year, payroll expenses, paper goods expenses, and cleaning supplies expenses. The model was statistically significant overall (F(7, 458) = 273.7, p \< 2.2e-16), indicating that, together, the predictors explain a substantial portion of the variance in net income. The Multiple R-squared value was 0.8071, and the Adjusted R-squared was 0.8041, suggesting that approximately 80% of the variability in net income is explained by the included predictors, a very strong model fit for financial data.
+
+Examining the individual predictors, payroll expenses had a highly significant positive association with net income (β = 0.945, p \< 0.001), meaning that as payroll expenses increase, net income tends to increase proportionally. Similarly, paper goods expenses (β = 0.735, p \< 0.001) and cleaning supplies expenses (β = 0.530, p \< 0.001) were also significantly positively associated with net income, though with slightly smaller effects compared to payroll.
+
+The year variable showed mixed results. Compared to the baseline year (2019), only 2020 showed a statistically significant increase in net income (β = 3,154, p = 0.028), while differences for 2021, 2022, and 2023 were not statistically significant, suggesting that after the sharp rise in 2020, year-to-year changes were less influential once operational costs were accounted for.
+
+The residuals of the model had a standard error of 9,747, with residuals distributed fairly symmetrically around zero, though a few larger deviations indicate the presence of some variation not fully explained by the model.
+
+Overall, the model demonstrates that operational expenses --- particularly payroll --- are strong predictors of net income in this dataset, with year effects being most notable in 2020.
+
+```{r}
+#| label: fig-residual-diagnostics
+#| fig-cap: "Residual Diagnostics for Regression Model"
+#| echo: true
+#| code-fold: true
+#| warning: false 
+model <- lm(Net.Income ~ Year + Payroll.Expenses + Paper.Goods + Cleaning.Supplies, data = PandL)
+summary(model)
+
+# Set up 2x2 plot grid
+par(mfrow = c(2, 2))
+
+# Plot standard diagnostic plots
+plot(model)
+
+
+
+```
+
+# Model Diagnostics
+
+Residual analysis revealed several key diagnostic issues with the initial linear regression model. The Residuals vs Fitted plot showed that most points were centered around zero, which is desirable; however, other diagnostic plots indicated violations of core regression assumptions. The Q-Q plot exhibited heavy deviations in the tails, suggesting that the residuals were not normally distributed. The Scale-Location plot displayed an upward trend, indicating the presence of heteroscedasticity, where the variance of residuals increases with fitted values. Additionally, the Residuals vs Leverage plot identified a few high-leverage points that could disproportionately influence the model estimates. Collectively, these diagnostic findings highlighted instability in the residuals and significant departures from ideal regression conditions. As a result, further modeling adjustments were pursued to address these issues and improve the overall fit and robustness of the predictive model.
+
+### Transformation
+
+A log transformation was applied to net income to address skewness, reduce the influence of extreme values, and improve adherence to linear regression assumptions of normality and homoscedasticity.
+
+```{r}
+### Regression Model 2: Log Net Income Predictors
+
+
+#| label: tbl-model2-summary
+#| tbl-cap: "Summary of Linear Model 2: Predictors of Log Net Income"
+#| echo: true
+#| code-fold: true
+#| warning: false 
+
+PandL <- PandL %>%
+  filter(Net.Income > 0)
+
+# Fit the model
+model2 <- lm(log(Net.Income) ~ Year + Class + Payroll.Expenses + 
+                 Paper.Goods + Cleaning.Supplies, data = PandL)
+
+# Display model summary
+summary(model2)
+par(mfrow = c(2, 2))
+plot(model2)
+
+
+
+
+```
+
+A multiple linear regression was performed to predict log-transformed net income using year, service class, payroll expenses, paper goods, and cleaning supplies. The model was statistically significant (F(8, 442) = 42.84, p \< 2.2e-16) and explained approximately 43% of the variance in log net income (Adjusted R² = 0.4265). Payroll expenses remained a strong positive predictor (p \< 0.001), while paper goods and cleaning supplies also showed significant positive effects. Net income was significantly lower in 2022 and 2023 compared to 2019 after adjusting for expenses. Service class was not a significant predictor. Although fewer observations were used due to missingness after log transformation, the model improved in meeting key regression assumptions.
+
+The diagnostic plots for the log-transformed regression model reveal both improvements and ongoing limitations when compared to the original OLS model without transformation. In the Residuals vs Fitted plot, the residuals show less dramatic fanning and fewer extreme deviations compared to the original model, suggesting that the log transformation helped reduce heteroscedasticity. However, there is still some curvature and spread in the residuals, indicating that non-linearity and non-constant variance have not been entirely eliminated. In the Q-Q plot, the residuals now align much more closely with the theoretical normal line than in the original OLS model, particularly in the center of the distribution, although some deviation persists in the tails. This suggests improved but not perfect normality of residuals after transformation.
+
+The Scale-Location plot shows that variability of the residuals across fitted values is more stabilized than before, but some increasing spread remains, especially at higher fitted values. Finally, the Residuals vs Leverage plot indicates that most points have low leverage, but a few observations still exert some influence on the model, which could continue to affect model stability.
+
+Overall, compared to the original OLS model without transformation, the log-transformed model exhibits better adherence to linear regression assumptions, particularly in terms of normality and variance homogeneity. However, some minor issues with non-linearity, residual spread, and influential points remain, suggesting that further refinement---such as moving to a robust regression model---may provide additional improvements by reducing sensitivity to these outliers.
+
+# Robust Regression Analysis
+
+Given persistent issues, a Robust Regression was employed to reduce the influence of outliers. Robust regression was chosen because the outliers are distorting the ordinary least square estimates, the residuals are non-normally distributed and the residual plots still indicate heteroscedasticity. The robust model used M-estimation to downweight extreme residuals.
+
+```{r}
+### Robust Regression Model: Log Net Income Predictors
+
+
+
+
+#| label: tbl-robust-model-summary
+#| tbl-cap: "Summary of Robust Regression Model for Log Net Income"
+#| echo: true
+#| code-fold: true
+#| warning: false 
+#| message: false
+
+
+
+library(MASS)
+
+
+PandL <- PandL %>%
+  filter(Net.Income > 0)
+
+# Fit the robust regression model
+robust_model <- rlm(log(Net.Income) ~ Year + Class + Payroll.Expenses + 
+                        Paper.Goods + Cleaning.Supplies, data = PandL)
+
+# Display summary of the robust model
+summary(robust_model)
+
+
+
+#| label: fig-robust-residual-diagnostics
+#| fig-cap: "Residual Diagnostics for Robust Regression Model"
+#| echo: true
+#| code-fold: true
+#| warning: false 
+
+# Set 2x2 plotting area
+par(mfrow = c(2, 2))
+
+# Plot residuals vs fitted values
+plot(fitted(robust_model), residuals(robust_model),
+     main = "Residuals vs Fitted",
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     pch = 20, col = "blue")
+abline(h = 0, col = "red", lty = 2)
+
+# Normal Q-Q plot
+qqnorm(residuals(robust_model),
+       main = "Normal Q-Q Plot",
+       pch = 20, col = "blue")
+qqline(residuals(robust_model), col = "red", lty = 2)
+
+# Scale-Location plot
+plot(fitted(robust_model), sqrt(abs(residuals(robust_model))),
+     main = "Scale-Location",
+     xlab = "Fitted Values",
+     ylab = "Sqrt(|Residuals|)",
+     pch = 20, col = "blue")
+
+# Residuals vs Leverage plot (approximate leverage from lm model)
+plot(hatvalues(model2), residuals(robust_model),
+     main = "Residuals vs Leverage (Approximate)",
+     xlab = "Leverage (from lm model)",
+     ylab = "Residuals",
+     pch = 20, col = "blue")
+
+
+
+```
+
+The model estimates indicate that payroll expenses remained a highly significant and strong positive predictor of net income (t = 12.13), similar to the findings from previous OLS models. Paper goods expenses (t = 4.47) and cleaning supplies expenses (t = 2.21) also maintained significant positive relationships. Regarding time effects, 2022 showed a statistically significant decline in net income compared to 2019 (t = -1.99), and 2023 showed a similar negative trend (t = -1.88), although slightly less significant. The year 2020 and 2021 did not show meaningful differences from the baseline year. Service class again was not statistically significant, reinforcing earlier findings that type of account was not a major driver of net income variation once operational expenses were considered.
+
+The residual standard error for the robust model was 1.222, very close to the residual standard error observed in the log-transformed OLS model (1.228), suggesting that the robust model achieved similar fit but with the advantage of being less sensitive to influential outliers. Fifteen observations were still excluded due to missingness (likely due to log(0) issues), consistent with previous analyses.
+
+Overall, the robust regression confirms the key conclusions of the log-transformed OLS model --- payroll expenses, paper goods, and cleaning supplies are strong predictors of net income, and net income showed a modest decline in the later years of the study. However, by reducing the influence of outliers, the robust model provides greater confidence in these estimates, especially in a financial dataset where a few extreme accounts could otherwise distort results.
+
+The diagnostic plots from the robust regression model show further improvements compared to the original OLS and log-transformed OLS models. In the Residuals vs Fitted plot, the residuals are more symmetrically distributed around zero, although some slight curvature and variability remain at lower fitted values. Compared to the earlier OLS plots, the robust regression has reduced the influence of extreme residuals, making the pattern less pronounced and more consistent.
+
+The Normal Q-Q plot shows some improvement in normality relative to previous models. While minor deviations from the theoretical line persist, particularly in the tails, the central portion of the distribution aligns more closely with normal expectations. This suggests that while the residuals are not perfectly normal, they are much closer to normality under the robust modeling approach.
+
+In the Scale-Location plot, the spread of residuals across fitted values appears more stabilized than in the earlier models. Most points cluster at lower fitted values, and while some heteroscedasticity remains, particularly at the lower end, it is less extreme than previously observed. The overall pattern suggests an improvement in variance homogeneity.
+
+The Residuals vs Leverage plot indicates that, similar to previous models, most points have low leverage, but a small number of observations still show higher leverage. However, the influence of these points appears less severe, reflecting the robust regression's ability to minimize the impact of high-leverage outliers on the model's coefficients.
+
+Overall, compared to both the initial OLS model and the log-transformed OLS model, the robust regression diagnostics demonstrate better performance in terms of residual symmetry, variance stabilization, and reduced sensitivity to influential points. Although minor issues still remain, the robust model represents a meaningful refinement, offering more reliable and stable coefficient estimates for interpreting the financial relationships within the dataset.
+
+```         
+```
+
+```{r}
+#| warning: false 
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(MASS)
+
+PandL <- PandL %>%
+  filter(Net.Income > 0)
+# Clean the dataset: drop NAs and filter positive Net Income
+PandL_clean <- PandL %>%
+  drop_na(Net.Income, Payroll.Expenses, Paper.Goods, Cleaning.Supplies, Year, Class) %>%
+  filter(Net.Income > 0)  # Only keep rows where Net Income is positive
+
+# Fit the robust model
+robust_model <- rlm(log(Net.Income) ~ Year + Class + Payroll.Expenses + Paper.Goods + Cleaning.Supplies,
+                    data = PandL_clean)
+
+# Create a dataset with actual and fitted values
+PandL_filtered <- PandL_clean %>%
+  mutate(
+    actual_log_income = log(Net.Income),
+    fitted_robust = predict(robust_model, newdata = PandL_clean)
+  )
+
+# Plot
+ggplot(PandL_filtered, aes(x = Payroll.Expenses, y = actual_log_income)) +
+  geom_point(alpha = 0.7, color = "steelblue", size = 2) +
+  geom_line(aes(y = fitted_robust), color = "firebrick", linewidth = 2) +
+  labs(
+    title = "Predicted vs Actual (Robust Regression Model)",
+    x = "Payroll Expenses",
+    y = "Log of Net Income"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "grey90", color = NA),
+    plot.background = element_rect(fill = "grey95", color = NA),
+    panel.grid.major = element_line(color = "grey70"),
+    panel.grid.minor = element_line(color = "grey85"),
+    axis.line = element_line(color = "black"),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
+
+
+    
+
+
+
+```
+
+The plot demonstrates a clear positive association between Payroll Expenses and Net Income on a logarithmic scale. As payroll spending increases, companies generally achieve higher levels of profitability, suggesting that investment in human resources and labor costs may be strongly tied to financial performance. The relationship is more variable at lower payroll levels, indicating that smaller companies or organizations with modest payrolls experience a wider range of financial outcomes. In contrast, among organizations with higher payroll expenses, the relationship between payroll and profitability becomes more stable and predictable. The use of a robust regression model strengthens this conclusion by reducing the influence of extreme outliers, allowing the central trend to emerge more clearly.
+
+```         
+```
+
+# Results
+
+```{r}
+### Comparison of Regression Models
+
+
+
+#| label: tbl-model-LS, Log-Transformed OLS, and Robust Regression Models Predicting Net Income"
+#| echo: true
+#| code-fold: true
+#| warning: false 
+#| message: false
+
+
+
+# Load necessary libraries
+library(MASS)
+library(modelsummary)
+
+# Load your dataset
+PandL <- read.csv("PandL.csv")  # <-- adjust path if needed
+PandL <- PandL %>%
+  filter(Net.Income > 0)
+# Fit the models
+model1 <- lm(Net.Income ~ Year + Class + Payroll.Expenses + Paper.Goods + Cleaning.Supplies, data = PandL)
+model2 <- lm(log(Net.Income) ~ Year + Class + Payroll.Expenses + Paper.Goods + Cleaning.Supplies, data = PandL)
+robust_model <- rlm(log(Net.Income) ~ Year + Class + Payroll.Expenses + Paper.Goods + Cleaning.Supplies, data = PandL)
+
+# Create a list of models
+models <- list(
+  "Model 1: OLS (Net Income)" = model1,
+  "Model 2: Log-Transformed OLS" = model2,
+  "Model 3: Robust Regression" = robust_model
+)
+
+# Create the model comparison table
+modelsummary(
+  models,
+  stars = TRUE,
+  statistic = "std.error",
+  gof_omit = "IC|Log.Lik.",
+  title = "Comparison of Regression Models for Net Income"
+)
+
+```
+
+Three regression models were analyzed to predict Net Income. The initial model using untransformed Net Income showed significant effects for Year, Class, and Payroll Expenses, although the coefficients were large and difficult to interpret directly due to the scale of the outcome. The second model, with log-transformed Net Income, improved interpretability and revealed that Year and Payroll Expenses remained statistically significant predictors, while the effect of Class was no longer significant. Finally, the robust regression model confirmed the findings from the log-transformed model, with Year and Payroll Expenses showing consistent significance and effect sizes, while controlling for potential outliers. Overall, the log-transformed models provided more stable and interpretable results, suggesting that transformations and robust methods improved the reliability of the model estimates.
+
+While model performance improved with log transformation and robust techniques, residual diagnostics indicated areas needing further refinement. Future work may incorporate non-linear methods or variable interaction terms.
+
+# Conclusion
+
+Multiple modeling strategies were explored to predict Net Income, including the application of variable transformations and robust regression techniques. Transforming Net Income using a logarithmic scale helped address issues of skewness and heteroskedasticity, leading to improved linearity and model fit. In addition, robust regression was employed to minimize the influence of outliers, further strengthening the stability and interpretability of the model. Although these adjustments improved performance, residual analysis revealed that important patterns of variability and potential nonlinearity remained unaccounted for. These persistent issues suggest that additional factors beyond those currently included may play a significant role in influencing Net Income. Future research should focus on incorporating additional predictors, exploring potential interaction effects, and considering more flexible modeling approaches, such as generalized additive models or mixed-effects models, to better capture the complexity of the data.
+
+# References
+
+-   Fox, J. (2016). *Applied Regression Analysis and Generalized Linear Models*. Sage Publications.
+-   Huber, P. J. (1981). *Robust Statistics*. Wiley.
+
+------------------------------------------------------------------------
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the Render button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
